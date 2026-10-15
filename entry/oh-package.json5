@@ -1,0 +1,9 @@
+{
+  "name": "entry",
+  "version": "1.0.0",
+  "description": "湖畔笔记入口模块",
+  "main": "",
+  "author": "jinyinhu",
+  "license": "",
+  "dependencies": {}
+}
