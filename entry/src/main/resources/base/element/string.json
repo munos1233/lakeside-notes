@@ -11,6 +11,10 @@
     {
       "name": "EntryAbility_label",
       "value": "湖畔笔记"
+    },
+    {
+      "name": "perm_install_reason",
+      "value": "安装湖畔笔记的新版本"
     }
   ]
 }

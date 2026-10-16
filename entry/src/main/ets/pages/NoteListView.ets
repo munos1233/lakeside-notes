@@ -1,4 +1,6 @@
 import { common } from '@kit.AbilityKit';
+import fs from '@ohos.file.fs';
+import installer from '@ohos.bundle.installer';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { Theme } from '../common/Theme';
 import { CardFrame } from '../components/UiParts';
@@ -13,6 +15,8 @@ const CONTEXT_RETRY_SLOW_MS: number = 500;
 const NEW_BUTTON_HEIGHT: number = 46;
 const NEW_BUTTON_MARGIN: number = 16;
 const LIST_BOTTOM_GAP: number = NEW_BUTTON_HEIGHT + NEW_BUTTON_MARGIN + 16;
+const UPDATE_HAP: string = 'lakeside-notes-doppel.hap';
+const UPDATE_USER: number = 100;
 const PHASE_LOADING: string = 'loading';
 const PHASE_READY: string = 'ready';
 const PHASE_FAILED: string = 'failed';
@@ -61,6 +65,13 @@ export struct NoteListView {
             .fontWeight(FontWeight.Medium)
             .fontColor(Theme.text)
             .layoutWeight(1)
+          Text('检查更新')
+            .fontSize(14)
+            .fontColor(Theme.gold)
+            .margin({ right: 12 })
+            .onClick(() => {
+              this.askUpdate();
+            })
           Text(this.resultCount())
             .fontSize(16)
             .fontColor(Theme.gold)
@@ -199,6 +210,76 @@ export struct NoteListView {
     this.visible = NoteQuery.sort(NoteQuery.search(this.loaded, this.keyword));
   }
 
+  private askUpdate(): void {
+    this.getUIContext().getPromptAction().showDialog({
+      title: '发现新版本',
+      message: '湖畔笔记 1.0.1',
+      buttons: [
+        { text: '取消', color: Theme.muted },
+        { text: '立即更新', color: Theme.gold }
+      ]
+    }).then((result) => {
+      if (!this.alive || result.index !== 1) {
+        return;
+      }
+      this.startUpdate();
+    }).catch((err: Object) => {
+      hilog.error(DOMAIN, 'list', 'update dialog %{public}s', JSON.stringify(err));
+    });
+  }
+
+  private startUpdate(): void {
+    let host = this.getUIContext().getHostContext();
+    if (host === undefined) {
+      this.tell('无法更新');
+      return;
+    }
+    let ctx = host as common.UIAbilityContext;
+    this.copyUpdate(ctx).then((path: string): Promise<void> => {
+      return installer.getBundleInstaller().then((tool: installer.BundleInstaller): Promise<void> => {
+        return tool.install([path], { userId: UPDATE_USER, installFlag: 1 });
+      });
+    }).catch((err: Object) => {
+      hilog.error(DOMAIN, 'list', 'update %{public}s', JSON.stringify(err));
+      if (!this.alive) {
+        return;
+      }
+      this.tell(updateError(err));
+    });
+  }
+
+  private copyUpdate(ctx: common.UIAbilityContext): Promise<string> {
+    let path = ctx.cacheDir + '/lakeside-update.hap';
+    return ctx.resourceManager.getRawFileContent(UPDATE_HAP).then((raw: Uint8Array): string => {
+      let buffer = new ArrayBuffer(raw.byteLength);
+      let view = new Uint8Array(buffer);
+      for (let i = 0; i < raw.byteLength; i++) {
+        view[i] = raw[i];
+      }
+      let file = fs.openSync(path, fs.OpenMode.CREATE | fs.OpenMode.READ_WRITE | fs.OpenMode.TRUNC);
+      try {
+        fs.writeSync(file.fd, buffer);
+      } catch (err) {
+        fs.closeSync(file);
+        throw new Error('更新包无法写入');
+      }
+      fs.closeSync(file);
+      return path;
+    });
+  }
+
+  private tell(message: string): void {
+    this.getUIContext().getPromptAction().showDialog({
+      title: '更新失败',
+      message: message,
+      buttons: [
+        { text: '知道了', color: Theme.gold }
+      ]
+    }).catch((err: Object) => {
+      hilog.error(DOMAIN, 'list', 'fail dialog %{public}s', JSON.stringify(err));
+    });
+  }
+
   private askClear(): void {
     this.getUIContext().getPromptAction().showDialog({
       message: '清空全部笔记？',
@@ -314,4 +395,23 @@ export struct NoteListView {
     clearTimeout(this.retryId);
     this.retryId = -1;
   }
+}
+
+class UpdateError {
+  code: number = 0;
+  message: string = '';
+}
+
+function updateError(err: Object): string {
+  if (err instanceof Error && err.message.length > 0) {
+    return err.message;
+  }
+  let boxed: UpdateError = err as UpdateError;
+  if (typeof boxed.message === 'string' && boxed.message.length > 0) {
+    return boxed.message;
+  }
+  if (typeof boxed.code === 'number' && boxed.code !== 0) {
+    return '更新失败 ' + boxed.code.toString();
+  }
+  return '更新失败';
 }

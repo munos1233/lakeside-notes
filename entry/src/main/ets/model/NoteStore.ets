@@ -2,7 +2,7 @@ import { common } from '@kit.AbilityKit';
 import { preferences } from '@kit.ArkData';
 import { fileIo } from '@kit.CoreFileKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { Note, localIso, parseNoteList } from './NoteTypes';
+import { Note, localIso, newNoteId, parseNoteList } from './NoteTypes';
 
 const DOMAIN: number = 0x4C4E;
 const TAG: string = 'NoteStore';
@@ -17,6 +17,10 @@ class SeedFlag {
 
 export class NoteStore {
   private static chain: Promise<void> = Promise.resolve();
+
+  static readCurrent(ctx: common.UIAbilityContext): Note[] {
+    return NoteStore.parseFile(NoteStore.notePath(ctx));
+  }
 
   static load(ctx: common.UIAbilityContext): Promise<Note[]> {
     return NoteStore.enqueue(() => {
@@ -180,38 +184,7 @@ export class NoteStore {
   }
 
   private static newId(used: string[]): string {
-    for (let attempt = 0; attempt < 8; attempt++) {
-      let suffix = Math.floor(Math.random() * 1000);
-      let id = Date.now().toString() + NoteStore.pad3(suffix);
-      if (used.indexOf(id) < 0) {
-        used.push(id);
-        return id;
-      }
-    }
-    let base = Date.now().toString();
-    for (let suffix = 0; suffix < 1000; suffix++) {
-      let id = base + NoteStore.pad3(suffix);
-      if (used.indexOf(id) < 0) {
-        used.push(id);
-        return id;
-      }
-    }
-    let extra = base + '000';
-    while (used.indexOf(extra) >= 0) {
-      extra = extra + '0';
-    }
-    used.push(extra);
-    return extra;
-  }
-
-  private static pad3(value: number): string {
-    if (value < 10) {
-      return '00' + value.toString();
-    }
-    if (value < 100) {
-      return '0' + value.toString();
-    }
-    return value.toString();
+    return newNoteId(used);
   }
 
   private static notePath(ctx: common.UIAbilityContext): string {

@@ -1,3 +1,5 @@
+import { common } from '@kit.AbilityKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 import { Theme } from '../common/Theme';
 import { NoteEditView } from './NoteEditView';
 import { NoteListView } from './NoteListView';
@@ -9,10 +11,21 @@ struct Index {
   @State private tab: number = 0;
   @State private noteId: string = '';
   @State private pageShowSeq: number = 0;
-  private tabs: string[] = ['列表', '编辑', '体检'];
+  @State private leaveSeq: number = 0;
+  @State private pendingTab: number = 0;
+  private tabs: string[] = ['列表', '编辑', '版本信息'];
 
   onPageShow(): void {
     this.pageShowSeq++;
+  }
+
+  onBackPress(): boolean {
+    if (this.tab !== 1) {
+      return false;
+    }
+    this.pendingTab = -1;
+    this.leaveSeq++;
+    return true;
   }
 
   build() {
@@ -31,12 +44,17 @@ struct Index {
         } else if (this.tab === 1) {
           NoteEditView({
             noteId: this.noteId,
+            leaveSeq: this.leaveSeq,
+            pendingTab: this.pendingTab,
             onDone: (): void => {
               this.finishEdit();
+            },
+            onLeave: (next: number): void => {
+              this.leaveTo(next);
             }
           })
         } else {
-          SelfCheckView()
+          SelfCheckView({ pageShowSeq: this.pageShowSeq })
         }
       }
       .layoutWeight(1)
@@ -54,11 +72,7 @@ struct Index {
             .borderRadius(10)
             .backgroundColor(this.tab === index ? Theme.gold : Theme.cardAlt)
             .onClick(() => {
-              if (index === 0) {
-                this.finishEdit();
-                return;
-              }
-              this.tab = index;
+              this.pickTab(index);
             })
         }, (name: string) => name)
       }
@@ -74,6 +88,42 @@ struct Index {
   private openNote(id: string): void {
     this.noteId = id;
     this.tab = 1;
+  }
+
+  private pickTab(index: number): void {
+    if (this.tab === 1 && index !== 1) {
+      this.pendingTab = index;
+      this.leaveSeq++;
+      return;
+    }
+    if (index === 0) {
+      this.finishEdit();
+      return;
+    }
+    this.tab = index;
+  }
+
+  private leaveTo(next: number): void {
+    if (next < 0) {
+      this.exitAbility();
+      return;
+    }
+    if (next === 0) {
+      this.finishEdit();
+      return;
+    }
+    this.tab = next;
+  }
+
+  private exitAbility(): void {
+    let host = this.getUIContext().getHostContext();
+    if (host === undefined) {
+      return;
+    }
+    let ctx = host as common.UIAbilityContext;
+    ctx.terminateSelf().catch((err: Object) => {
+      hilog.error(0x4C4E, 'Index', 'exit %{public}s', JSON.stringify(err));
+    });
   }
 
   private finishEdit(): void {

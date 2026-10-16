@@ -27,6 +27,41 @@ function pad2(value: number): string {
   return value.toString();
 }
 
+function pad3(value: number): string {
+  if (value < 10) {
+    return '00' + value.toString();
+  }
+  if (value < 100) {
+    return '0' + value.toString();
+  }
+  return value.toString();
+}
+
+export function newNoteId(used: string[]): string {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    let suffix = Math.floor(Math.random() * 1000);
+    let id = Date.now().toString() + pad3(suffix);
+    if (used.indexOf(id) < 0) {
+      used.push(id);
+      return id;
+    }
+  }
+  let base = Date.now().toString();
+  for (let suffix = 0; suffix < 1000; suffix++) {
+    let id = base + pad3(suffix);
+    if (used.indexOf(id) < 0) {
+      used.push(id);
+      return id;
+    }
+  }
+  let extra = base + '000';
+  while (used.indexOf(extra) >= 0) {
+    extra = extra + '0';
+  }
+  used.push(extra);
+  return extra;
+}
+
 export function parseNoteList(text: string): Note[] {
   let trimmed = text.trim();
   if (trimmed.length === 0) {

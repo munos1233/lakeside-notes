@@ -7,6 +7,18 @@
     "deviceTypes": [
       "default"
     ],
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.INSTALL_BUNDLE",
+        "reason": "$string:perm_install_reason",
+        "usedScene": {
+          "abilities": [
+            "EntryAbility"
+          ],
+          "when": "inuse"
+        }
+      }
+    ],
     "deliveryWithInstall": true,
     "installationFree": false,
     "pages": "$profile:main_pages",
