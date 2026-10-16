@@ -213,7 +213,7 @@ export struct NoteListView {
   private askUpdate(): void {
     this.getUIContext().getPromptAction().showDialog({
       title: '发现新版本',
-      message: '湖畔笔记 1.0.1',
+      message: '笔记 1.0.1',
       buttons: [
         { text: '取消', color: Theme.muted },
         { text: '立即更新', color: Theme.gold }
