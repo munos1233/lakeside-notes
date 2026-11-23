@@ -15,14 +15,6 @@
     {
       "name": "perm_install_reason",
       "value": "安装笔记的新版本"
-    },
-    {
-      "name": "perm_camera_reason",
-      "value": "拍摄笔记附件"
-    },
-    {
-      "name": "perm_location_reason",
-      "value": "为笔记记录位置"
     }
   ]
 }
